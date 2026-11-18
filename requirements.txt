@@ -1,0 +1,26 @@
+# Read and transform CSV data before loading it into PostgreSQL.
+pandas
+
+# Manage database connections and load transformed data into PostgreSQL.
+sqlalchemy
+
+# Provide the PostgreSQL driver used by SQLAlchemy.
+psycopg2-binary
+
+# Load local configuration from the .env file.
+python-dotenv
+
+# List, download, and export files through the Google Drive API.
+google-api-python-client
+
+# Authenticate Google Drive API requests with service account credentials.
+google-auth
+
+# Schedule and run ingestion, transformation, and database loading tasks.
+apache-airflow==3.3.0
+
+# Send email notifications when an Airflow DAG run fails.
+apache-airflow-providers-smtp==3.0.2
+
+# Provide trusted certificates for secure connections, including SMTP.
+certifi==2026.7.22
