@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${DB_NAME:-finance_db}
+      POSTGRES_USER: ${DB_USER:?Set DB_USER in .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  airflow:
+    build: .
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:-finance_db}
+      DB_USER: ${DB_USER:?Set DB_USER in .env}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      DRIVE_FOLDER_ID: ${DRIVE_FOLDER_ID:?Set DRIVE_FOLDER_ID in .env}
+      SERVICE_ACCOUNT_FILE: /run/secrets/drive_service_account
+      AIRFLOW_HOME: /home/pipeline/airflow
+      AIRFLOW__CORE__DAGS_FOLDER: /app/dags
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      PIPELINE_ALERT_EMAIL: ${PIPELINE_ALERT_EMAIL:-}
+    ports:
+      - "127.0.0.1:${AIRFLOW_PORT:-8080}:8080"
+    secrets:
+      - drive_service_account
+    volumes:
+      - airflow_data:/home/pipeline/airflow
+
+  pipeline:
+    build: .
+    profiles: ["direct"]
+    working_dir: /app/src
+    command: ["python", "-c", "from main import run; run(raise_on_failure=True)"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:-finance_db}
+      DB_USER: ${DB_USER:?Set DB_USER in .env}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      DRIVE_FOLDER_ID: ${DRIVE_FOLDER_ID:?Set DRIVE_FOLDER_ID in .env}
+      SERVICE_ACCOUNT_FILE: /run/secrets/drive_service_account
+    secrets:
+      - drive_service_account
+
+secrets:
+  drive_service_account:
+    file: ${SERVICE_ACCOUNT_FILE:-./credentials/credentials_service_account.json}
+
+volumes:
+  postgres_data:
+  airflow_data:
