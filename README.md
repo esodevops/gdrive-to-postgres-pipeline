@@ -1,9 +1,9 @@
 # Google Drive to PostgreSQL Pipeline
 
-This batch pipeline reads CSV files and Google Sheets from a Google Drive folder, cleans the data with pandas, and loads it into PostgreSQL's `staging` schema. Run it through Airflow to track task status and logs, or execute it directly for a one-off load.
+This batch pipeline reads CSV files and Google Sheets from a Google Drive folder, cleans the data with pandas, and loads it into PostgreSQL's `staging` schema. Run it through Airflow to track task status and logs, or execute it directly for a one-off load. Use Metabase to explore the loaded tables and build dashboards.
 
 ```text
-Google Drive folder → CSV download or export → pandas cleanup → PostgreSQL staging tables
+Google Drive folder → CSV download or export → pandas cleanup → PostgreSQL staging tables → Metabase
                           Airflow runs and monitors the pipeline
 ```
 
@@ -34,11 +34,12 @@ Google Drive folder → CSV download or export → pandas cleanup → PostgreSQL
 | `DB_USER`, `DB_PASSWORD` | PostgreSQL credentials. |
 | `DB_HOST`, `DB_PORT` | Connection settings for a local Python run. Use `localhost:5434` to reach the Compose database from your computer. Compose services use `postgres:5432` internally. |
 | `AIRFLOW_PORT` | Optional host port for the Airflow UI. Defaults to `8080`. |
+| `METABASE_PORT` | Optional local port for Metabase. Defaults to `3000`. |
 | `PIPELINE_ALERT_EMAIL` | Optional recipient for failed DAG runs. Configure an SMTP connection named `smtp_default` in Airflow before enabling alerts. |
 
 ## Run with Airflow and Docker Compose
 
-From the repository root, start PostgreSQL and Airflow.
+From the repository root, start PostgreSQL, Airflow, and Metabase.
 
 ```bash
 docker compose up --build -d
@@ -76,6 +77,32 @@ python src/main.py
 ```
 
 The local script logs individual file failures and continues. Check the logs for errors even when the process exits successfully.
+
+## Visualize data in Metabase
+
+Metabase starts with the full Compose stack. To start just Metabase and PostgreSQL, run:
+
+```bash
+docker compose up -d metabase
+docker compose ps metabase
+```
+
+1. Open Metabase at `http://localhost:3000` or use your configured `METABASE_PORT`. Complete the setup wizard to create your Metabase admin account.
+2. Add a **PostgreSQL** database using the settings below. If you skip this step in the wizard, open **Admin → Databases** to add it later.
+
+   | Metabase field | Value |
+   | --- | --- |
+   | Display name | Finance Pipeline |
+   | Host | `postgres` |
+   | Port | `5432` |
+   | Database name | `DB_NAME` from `.env`, or `finance_db` by default |
+   | Username and password | `DB_USER` and `DB_PASSWORD` from `.env` for this local stack |
+   | Schemas | Choose **Only these** and enter `staging` |
+
+3. Run the pipeline to populate the tables. If you connected before the first load, open the database in **Admin → Databases** and select **Sync database schema now**.
+4. Try the net spend by category query from [sample.sql](sql/sample.sql) in **New → SQL query** after loading `transactions.csv` with the columns used by that query. Select **Finance Pipeline**, run the query, choose a bar chart with `category` and `net_amount`, and save it to a dashboard.
+
+The `metabase_data` volume persists accounts, settings, questions, and dashboards across container recreations. This local setup uses Metabase's [embedded H2 application database](https://www.metabase.com/docs/latest/installation-and-operation/configuring-application-database).
 
 ## Input and output
 
