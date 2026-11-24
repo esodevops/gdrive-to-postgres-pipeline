@@ -19,3 +19,5 @@ __pycache__/
 
 sql/solutions
 sql/questions
+
+*.docx
