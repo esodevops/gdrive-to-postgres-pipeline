@@ -8,12 +8,29 @@ services:
     ports:
       - "127.0.0.1:5434:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -h 127.0.0.1"]
       interval: 5s
       timeout: 5s
       retries: 12
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - airflow_net
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:?Set PGADMIN_DEFAULT_EMAIL in .env}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?Set PGADMIN_DEFAULT_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - airflow_net
 
   metabase:
     image: metabase/metabase:v0.65.4.1
@@ -33,6 +50,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 2m
+    networks:
+      - airflow_net
 
   airflow:
     build: .
@@ -58,6 +77,8 @@ services:
       - drive_service_account
     volumes:
       - airflow_data:/home/pipeline/airflow
+    networks:
+      - airflow_net
 
   pipeline:
     build: .
@@ -77,6 +98,8 @@ services:
       SERVICE_ACCOUNT_FILE: /run/secrets/drive_service_account
     secrets:
       - drive_service_account
+    networks:
+      - airflow_net
 
 secrets:
   drive_service_account:
@@ -84,5 +107,10 @@ secrets:
 
 volumes:
   postgres_data:
+  pgadmin_data:
   airflow_data:
   metabase_data:
+
+networks:
+  airflow_net:
+    driver: bridge
