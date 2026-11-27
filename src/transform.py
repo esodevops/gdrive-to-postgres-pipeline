@@ -1,13 +1,17 @@
 import pandas as pd
 
 
-def _base_clean(df):
-    df.columns = (
-        df.columns.str.strip()
+def normalize_columns(columns):
+    return (
+        columns.str.strip()
         .str.lower()
         .str.replace(r"[^a-z0-9]+", "_", regex=True)
         .str.strip("_")
     )
+
+
+def _base_clean(df):
+    df.columns = normalize_columns(df.columns)
     df = df.dropna(how="all").drop_duplicates()
     for col in df.select_dtypes(include="object").columns:
         df[col] = df[col].str.strip()

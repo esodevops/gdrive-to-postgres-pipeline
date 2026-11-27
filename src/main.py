@@ -1,4 +1,5 @@
 import logging
+import os
 import pandas as pd
 from config import DRIVE_FOLDER_ID
 from extract import get_service, list_files, download_file
@@ -10,6 +11,12 @@ log = logging.getLogger("pipeline")
 
 
 def run(*, raise_on_failure: bool = False):
+    if os.getenv("PIPELINE_SOURCE_IDS"):
+        from production import run_snapshot
+
+        run_snapshot()
+        return
+
     service = get_service()
     files = list_files(service, DRIVE_FOLDER_ID)
     log.info("Found %d file(s) in Drive folder", len(files))
@@ -25,7 +32,7 @@ def run(*, raise_on_failure: bool = False):
             raw = pd.read_csv(path)
             clean = transform(raw, source_file=path.name)
             table = path.stem.lower().replace(" ", "_")
-            rows = load(clean, table)
+            rows = load(clean, table, source_file=path.name)
             log.info(
                 "%s: %d raw rows -> %d loaded into staging.%s",
                 path.name,

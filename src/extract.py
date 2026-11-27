@@ -1,4 +1,6 @@
 import io
+
+import google.auth
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
@@ -9,9 +11,12 @@ GSHEET_MIME = "application/vnd.google-apps.spreadsheet"
 
 
 def get_service():
-    creds = service_account.Credentials.from_service_account_file(
-        str(SERVICE_ACCOUNT_FILE), scopes=SCOPES
-    )
+    if SERVICE_ACCOUNT_FILE:
+        creds = service_account.Credentials.from_service_account_file(
+            str(SERVICE_ACCOUNT_FILE), scopes=SCOPES
+        )
+    else:
+        creds, _ = google.auth.default(scopes=SCOPES)
     return build("drive", "v3", credentials=creds)
 
 
@@ -23,6 +28,8 @@ def list_files(service, folder_id):
             service.files()
             .list(
                 q=query,
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True,
                 fields="nextPageToken, files(id, name, mimeType)",
                 pageToken=page_token,
             )
@@ -41,7 +48,7 @@ def download_file(service, file):
         request = service.files().export_media(fileId=file["id"], mimeType="text/csv")
         name += ".csv"
     else:
-        request = service.files().get_media(fileId=file["id"])
+        request = service.files().get_media(fileId=file["id"], supportsAllDrives=True)
     path = RAW_DIR / name
     with io.FileIO(path, "wb") as fh:
         downloader = MediaIoBaseDownload(fh, request)

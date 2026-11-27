@@ -57,7 +57,9 @@ docker compose exec airflow cat /home/pipeline/airflow/simple_auth_manager_passw
 3. Find `gdrive_to_postgres`, unpause it if needed, and trigger a run.
 4. Open the `run_pipeline` task logs to see the source files, row counts, and errors.
 
-The DAG has no automatic schedule. It allows one active run at a time and has zero task retries. If any file fails, the task reports failure after attempting the remaining files. Airflow Standalone is intended for local development.
+By default, the DAG has no automatic schedule. It allows one active run at a time and has zero task retries. If any file fails, the task reports failure after attempting the remaining files. Airflow Standalone is intended for local development.
+
+For a scheduled, validated finance snapshot with a replay archive, see the [production deployment guide](docs/production.md).
 
 ## Run without Airflow
 
@@ -116,7 +118,7 @@ All CSV files have their column names normalized, fully empty rows and duplicate
 | `accounts` | `account_status`, `opening_balance`, `open_date` | Title-cases statuses and parses balances and dates. |
 | `transactions` | `transaction_date`, `amount`, `description`, `channel`, `transaction_type` | Parses dates and amounts, drops rows missing either value, and derives `signed_amount` from the transaction type. |
 
-Each file maps to a table in `staging` using the lowercase filename stem with spaces replaced by underscores. Use simple, distinct stems such as `customers` or `monthly_accounts`. When reloading a file with the same name, the loader deletes its previous rows before appending the new batch. Those operations run in separate transactions, so an insert failure can leave that file's previous rows removed until a successful rerun.
+Each file maps to a table in `staging` using the lowercase filename stem with spaces replaced by underscores. Use simple, distinct stems such as `customers` or `monthly_accounts`. When reloading a file with the same name, the loader deletes its previous rows before appending the new batch. Both operations run in the same transaction, so a failed insert preserves the previous rows.
 
 ## Verify the load
 

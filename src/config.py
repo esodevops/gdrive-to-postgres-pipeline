@@ -8,7 +8,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 DRIVE_FOLDER_ID = os.getenv("DRIVE_FOLDER_ID")
-SERVICE_ACCOUNT_FILE = BASE_DIR / os.getenv("SERVICE_ACCOUNT_FILE")
+service_account_path = os.getenv("SERVICE_ACCOUNT_FILE")
+SERVICE_ACCOUNT_FILE = BASE_DIR / service_account_path if service_account_path else None
 RAW_DIR = BASE_DIR / "data" / "raw"
 
 DB_URL = URL.create(
@@ -18,4 +19,9 @@ DB_URL = URL.create(
     host=os.getenv("DB_HOST", "localhost"),
     port=int(os.getenv("DB_PORT", 5432)),
     database=os.getenv("DB_NAME"),
+    query={
+        option: value
+        for option in ("sslmode", "sslrootcert")
+        if (value := os.getenv(f"DB_{option.upper()}"))
+    },
 )
